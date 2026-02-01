@@ -314,6 +314,10 @@
                     <label id="labelSafetyMargin">Страховочный запас %</label>
                     <input type="number" id="safetyMargin" value="10" min="0" max="50" oninput="calculate()">
                 </div>
+                <div class="input-item">
+                    <label id="labelSplitterCount">Кол-во разделителей</label>
+                    <input type="number" id="splitterCount" value="10" min="5" max="50" oninput="calculate()">
+                </div>
             </div>
         </div>
 
@@ -344,6 +348,7 @@
 
         <div class="card">
             <h2 id="splittersTitle">🏭 Разделители</h2>
+            <div id="beltSpeedNote" style="color:#888;font-size:13px;margin-bottom:15px">Расчёт для ленты со склада: 0.5 предмета/сек (30/мин)</div>
             <div class="result-row">
                 <span class="result-label" id="labelTargetShare">Целевая доля</span>
                 <span class="result-value" id="targetShare">0.1966</span>
@@ -415,6 +420,7 @@
                 labelEnergyDrain: 'Расход энергии',
                 labelBatteryVolume: 'Объём батарейки',
                 labelSafetyMargin: 'Страховочный запас %',
+                labelSplitterCount: 'Кол-во разделителей',
                 energyTitle: '🔋 Расчёт энергии',
                 labelGenOn: 'Генератор ВКЛ (прирост/сек)',
                 labelGenOff: 'Генератор ВЫКЛ (расход/сек)',
@@ -422,6 +428,7 @@
                 labelCycleTime: 'Полный цикл (сек)',
                 simulationTitle: '📊 Симуляция цикла',
                 splittersTitle: '🏭 Разделители',
+                beltSpeedNote: 'Расчёт для ленты со склада: 0.5 предмета/сек (30/мин)',
                 labelTargetShare: 'Целевая доля',
                 labelTotalShare: 'Итого доля',
                 labelRealTime: 'Реальное время',
@@ -461,6 +468,7 @@
                 labelEnergyDrain: 'Energy drain',
                 labelBatteryVolume: 'Battery capacity',
                 labelSafetyMargin: 'Safety margin %',
+                labelSplitterCount: 'Number of splitters',
                 energyTitle: '🔋 Energy Calculation',
                 labelGenOn: 'Generator ON (gain/sec)',
                 labelGenOff: 'Generator OFF (drain/sec)',
@@ -468,6 +476,7 @@
                 labelCycleTime: 'Full cycle (sec)',
                 simulationTitle: '📊 Cycle Simulation',
                 splittersTitle: '🏭 Splitters',
+                beltSpeedNote: 'Calculated for storage belt: 0.5 items/sec (30/min)',
                 labelTargetShare: 'Target share',
                 labelTotalShare: 'Total share',
                 labelRealTime: 'Real time',
@@ -507,6 +516,7 @@
             document.getElementById('labelEnergyDrain').textContent = t.labelEnergyDrain;
             document.getElementById('labelBatteryVolume').textContent = t.labelBatteryVolume;
             document.getElementById('labelSafetyMargin').textContent = t.labelSafetyMargin;
+            document.getElementById('labelSplitterCount').textContent = t.labelSplitterCount;
             document.getElementById('energyTitle').textContent = t.energyTitle;
             document.getElementById('labelGenOn').textContent = t.labelGenOn;
             document.getElementById('labelGenOff').textContent = t.labelGenOff;
@@ -514,6 +524,7 @@
             document.getElementById('labelCycleTime').textContent = t.labelCycleTime;
             document.getElementById('simulationTitle').textContent = t.simulationTitle;
             document.getElementById('splittersTitle').textContent = t.splittersTitle;
+            document.getElementById('beltSpeedNote').textContent = t.beltSpeedNote;
             document.getElementById('labelTargetShare').textContent = t.labelTargetShare;
             document.getElementById('labelTotalShare').textContent = t.labelTotalShare;
             document.getElementById('labelRealTime').textContent = t.labelRealTime;
@@ -533,6 +544,7 @@
             const energyDrain = parseFloat(document.getElementById('energyDrain').value) || 0;
             const batteryVolume = parseFloat(document.getElementById('batteryVolume').value) || 0;
             const safetyMargin = parseFloat(document.getElementById('safetyMargin').value) || 0;
+            const splitterCount = Math.min(50, Math.max(5, parseInt(document.getElementById('splitterCount').value) || 10));
 
             const BELT_SPEED = 0.5;
 
@@ -551,7 +563,10 @@
             document.getElementById('cycleTime').textContent = cycleTime.toFixed(2);
             document.getElementById('targetShare').textContent = targetShare.toFixed(6);
 
-            const fractions = [0.5, 0.25, 0.125, 0.0625, 0.03125, 0.015625, 0.0078125, 0.00390625, 0.001953125, 0.0009765625];
+            const fractions = [];
+            for (let i = 0; i < splitterCount; i++) {
+                fractions.push(1 / Math.pow(2, i + 1));
+            }
 
             let remaining = targetShare;
             const bits = [];
@@ -563,19 +578,15 @@
             }
 
             const roundUp = remaining > 0 ? 1 : 0;
+            const lastIdx = splitterCount - 1;
+            const lastFraction = fractions[lastIdx];
 
             let totalShare = 0;
             for (let i = 0; i < fractions.length; i++) {
                 totalShare += bits[i] * fractions[i];
             }
-            totalShare += (bits[9] + roundUp) * 0.0009765625;
-
-            if (roundUp && bits[9] === 0) {
-                totalShare = 0;
-                for (let i = 0; i < fractions.length; i++) {
-                    totalShare += bits[i] * fractions[i];
-                }
-                totalShare += roundUp * 0.0009765625;
+            if (roundUp) {
+                totalShare += lastFraction;
             }
 
             const realTime = 1 / (totalShare * BELT_SPEED);
@@ -584,17 +595,17 @@
             document.getElementById('realTime').textContent = realTime.toFixed(2) + ' ' + t.sec;
 
             const activeOutputs = [];
-            for (let i = 0; i < 10; i++) {
+            for (let i = 0; i < splitterCount; i++) {
                 if (bits[i] > 0) activeOutputs.push(i + 1);
             }
-            if (roundUp > 0 && !activeOutputs.includes(10)) {
-                activeOutputs.push(10);
+            if (roundUp > 0 && !activeOutputs.includes(splitterCount)) {
+                activeOutputs.push(splitterCount);
             }
 
             document.getElementById('summary').innerHTML = `${t.summaryText} <strong>${activeOutputs.join(', ')}</strong>`;
 
             renderSimulation(genOn, genOff, offTime, safeOffTime, realTime, safetyMargin, t);
-            renderScheme(activeOutputs, t);
+            renderScheme(activeOutputs, splitterCount, t);
         }
 
         function renderSimulation(genOn, genOff, offTime, safeOffTime, realTime, safetyMargin, t) {
@@ -656,10 +667,10 @@
             container.innerHTML = html;
         }
 
-        function renderScheme(activeOutputs, t) {
+        function renderScheme(activeOutputs, splitterCount, t) {
             const container = document.getElementById('schemeVisual');
 
-            let html = '<div style="display: flex; align-items: flex-start; gap: 10px;">';
+            let html = '<div style="display: flex; align-items: flex-start; gap: 10px; overflow-x: auto;">';
 
             html += '<div style="display: flex; flex-direction: column; align-items: center;">';
             html += `<div style="color: #d4a545; font-size: 12px; margin-bottom: 5px;">${t.input}</div>`;
@@ -668,10 +679,11 @@
 
             html += '<span class="arrow">→</span>';
 
-            html += '<div style="display: flex; flex-direction: column; gap: 5px;">';
+            html += '<div style="display: flex; flex-direction: column; gap: 5px; max-height: 400px; overflow-y: auto;">';
 
-            for (let i = 1; i <= 10; i++) {
+            for (let i = 1; i <= splitterCount; i++) {
                 const isActive = activeOutputs.includes(i);
+                const fraction = `1/${Math.pow(2, i)}`;
 
                 html += '<div style="display: flex; align-items: center; gap: 8px;">';
 
@@ -685,7 +697,7 @@
                 html += '<span class="arrow">→</span>';
 
                 if (isActive) {
-                    html += `<div class="output-label take">${t.take} ${fractionNames[i-1]}</div>`;
+                    html += `<div class="output-label take">${t.take} ${fraction}</div>`;
                 } else {
                     html += `<div class="output-label skip">${t.toStorage}</div>`;
                 }
