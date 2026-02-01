@@ -534,12 +534,14 @@
             const batteryVolume = parseFloat(document.getElementById('batteryVolume').value) || 0;
             const safetyMargin = parseFloat(document.getElementById('safetyMargin').value) || 0;
 
+            const BELT_SPEED = 0.5;
+
             const genOn = maxEnergy - energyDrain;
             const genOff = energyDrain - (maxEnergy - batteryVolume);
             const offTime = 40 * genOn / genOff;
             const safeOffTime = offTime * (1 - safetyMargin / 100);
             const cycleTime = 40 + safeOffTime;
-            const targetShare = 10 / cycleTime;
+            const targetShare = 1 / (cycleTime * BELT_SPEED);
 
             document.getElementById('genOn').textContent = '+' + genOn.toFixed(0);
             document.getElementById('genOff').textContent = '-' + genOff.toFixed(0);
@@ -576,7 +578,7 @@
                 totalShare += roundUp * 0.0009765625;
             }
 
-            const realTime = 10 / totalShare;
+            const realTime = 1 / (totalShare * BELT_SPEED);
 
             document.getElementById('totalShare').textContent = totalShare.toFixed(6);
             document.getElementById('realTime').textContent = realTime.toFixed(2) + ' ' + t.sec;
