@@ -310,6 +310,10 @@
                     <label id="labelBatteryVolume">Объём батарейки</label>
                     <input type="number" id="batteryVolume" value="1100" oninput="calculate()">
                 </div>
+                <div class="input-item">
+                    <label id="labelSafetyMargin">Страховочный запас %</label>
+                    <input type="number" id="safetyMargin" value="10" min="0" max="50" oninput="calculate()">
+                </div>
             </div>
         </div>
 
@@ -405,6 +409,7 @@
                 labelMaxEnergy: 'Макс Энергии (генератор)',
                 labelEnergyDrain: 'Расход энергии',
                 labelBatteryVolume: 'Объём батарейки',
+                labelSafetyMargin: 'Страховочный запас %',
                 energyTitle: '🔋 Расчёт энергии',
                 labelGenOn: 'Генератор ВКЛ (прирост/сек)',
                 labelGenOff: 'Генератор ВЫКЛ (расход/сек)',
@@ -449,6 +454,7 @@
                 labelMaxEnergy: 'Max Energy (generator)',
                 labelEnergyDrain: 'Energy drain',
                 labelBatteryVolume: 'Battery capacity',
+                labelSafetyMargin: 'Safety margin %',
                 energyTitle: '🔋 Energy Calculation',
                 labelGenOn: 'Generator ON (gain/sec)',
                 labelGenOff: 'Generator OFF (drain/sec)',
@@ -493,6 +499,7 @@
             document.getElementById('labelMaxEnergy').textContent = t.labelMaxEnergy;
             document.getElementById('labelEnergyDrain').textContent = t.labelEnergyDrain;
             document.getElementById('labelBatteryVolume').textContent = t.labelBatteryVolume;
+            document.getElementById('labelSafetyMargin').textContent = t.labelSafetyMargin;
             document.getElementById('energyTitle').textContent = t.energyTitle;
             document.getElementById('labelGenOn').textContent = t.labelGenOn;
             document.getElementById('labelGenOff').textContent = t.labelGenOff;
@@ -517,16 +524,20 @@
             const maxEnergy = parseFloat(document.getElementById('maxEnergy').value) || 0;
             const energyDrain = parseFloat(document.getElementById('energyDrain').value) || 0;
             const batteryVolume = parseFloat(document.getElementById('batteryVolume').value) || 0;
+            const safetyMargin = parseFloat(document.getElementById('safetyMargin').value) || 0;
 
             const genOn = maxEnergy - energyDrain;
             const genOff = energyDrain - (maxEnergy - batteryVolume);
             const offTime = 40 * genOn / genOff;
-            const cycleTime = 40 + offTime;
+            const safeOffTime = offTime * (1 - safetyMargin / 100);
+            const cycleTime = 40 + safeOffTime;
             const targetShare = 10 / cycleTime;
 
             document.getElementById('genOn').textContent = '+' + genOn.toFixed(0);
             document.getElementById('genOff').textContent = '-' + genOff.toFixed(0);
-            document.getElementById('offTime').textContent = offTime.toFixed(2);
+            document.getElementById('offTime').textContent = safetyMargin > 0
+                ? `${safeOffTime.toFixed(2)} (${offTime.toFixed(2)} - ${safetyMargin}%)`
+                : offTime.toFixed(2);
             document.getElementById('cycleTime').textContent = cycleTime.toFixed(2);
             document.getElementById('targetShare').textContent = targetShare.toFixed(6);
 
